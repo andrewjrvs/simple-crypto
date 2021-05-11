@@ -3,8 +3,11 @@ package simple_crypto
 import (
 	"crypto/sha256"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // from https://hackernoon.com/learn-blockchains-by-building-one-117428612f46
@@ -26,10 +29,11 @@ type Block struct {
 
 var current_transactions []Transaction
 var chain []Block
+var node_instance string = uuid.New().String()
 
 func init() {
 	// create the genesis block
-	New_block(1, "100")
+	new_block(1, "100")
 }
 
 /**
@@ -54,7 +58,7 @@ func New_Transaction(sender string, recipent string, amount uint64) uint64 {
 /**
  * Creates a new block in the block chain
  */
-func New_block(proof uint64, previous_hash string) Block {
+func new_block(proof uint64, previous_hash string) Block {
 	blk := Block{
 		Index:        uint64(len(chain) + 1),
 		Timestamp:    time.Now().UTC().Unix(),
@@ -63,7 +67,7 @@ func New_block(proof uint64, previous_hash string) Block {
 		PreviousHash: previous_hash,
 	}
 	if previous_hash == "" {
-		hash := AsSha256(Last_Block())
+		hash := asSha256(Last_Block())
 		blk.PreviousHash = hash
 	}
 
@@ -75,7 +79,7 @@ func New_block(proof uint64, previous_hash string) Block {
 	return blk
 }
 
-func AsSha256(o interface{}) string {
+func asSha256(o interface{}) string {
 	h := sha256.New()
 	h.Write([]byte(fmt.Sprintf("%v", o)))
 
@@ -89,7 +93,7 @@ func AsSha256(o interface{}) string {
  */
 func Proof_of_work(last_proof uint64) uint64 {
 	nextProof := uint64(0)
-	for ok := true; ok; ok = Valid_proof(last_proof, nextProof) {
+	for ok := false; !ok; ok = Valid_proof(last_proof, nextProof) {
 		nextProof++
 	}
 	return nextProof
@@ -100,6 +104,17 @@ func Proof_of_work(last_proof uint64) uint64 {
  * in this case, does it contain 4 leading zeros?
  */
 func Valid_proof(last_proof uint64, proof uint64) bool {
-	return strings.HasPrefix(AsSha256((last_proof + proof)), "0000")
+	return strings.HasPrefix(asSha256((strconv.FormatUint(last_proof, 10) + strconv.FormatUint(proof, 10))), "0000")
+}
 
+func Mine() Block {
+	last_proof := Last_Block().Proof
+	proof := Proof_of_work(last_proof)
+	New_Transaction(
+		"0",
+		node_instance,
+		1,
+	)
+
+	return new_block(proof, "")
 }
